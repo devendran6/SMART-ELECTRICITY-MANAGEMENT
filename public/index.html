@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Electricity & Overload Protection Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-['Plus_Jakarta_Sans',sans-serif] antialiased selection:bg-cyan-500 selection:text-white">
+
+  <!-- Overload Emergency Banner (Shown when Overload or Voltage anomaly is detected) -->
+  <div id="emergency-banner" class="hidden transition-all duration-300 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white px-4 py-3 shadow-xl shadow-red-900/40 sticky top-0 z-50 animate-pulse border-b border-red-400">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4 flex-wrap">
+      <div class="flex items-center gap-3">
+        <span class="p-2 bg-white/20 rounded-full flex items-center justify-center text-xl">⚠️</span>
+        <div>
+          <span class="font-extrabold uppercase tracking-wider text-sm bg-black/30 px-2 py-0.5 rounded mr-2" id="banner-alert-tag">OVERLOAD DETECTED</span>
+          <span class="font-semibold text-sm sm:text-base" id="banner-alert-message">Power usage has exceeded the safe household threshold!</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="silence-alarm-btn" class="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-black/40 hover:bg-black/60 rounded-lg transition border border-white/30">
+          Mute Alarm
+        </button>
+        <button id="view-alert-details-btn" class="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-white text-red-700 hover:bg-slate-100 rounded-lg shadow transition">
+          View Logs
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header / Navigation Bar -->
+  <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-xl sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4 flex-wrap">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/25">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+              VOLTGUARD <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 font-semibold border border-cyan-500/30">IoT ESP32</span>
+            </h1>
+          </div>
+          <p class="text-xs text-slate-400">Home Electricity Management & Overload Protection System</p>
+        </div>
+      </div>
+
+      <!-- Status Badges & Controls -->
+      <div class="flex items-center gap-2.5 flex-wrap">
+        <!-- Live Connection Status -->
+        <div id="connection-pill" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/60 text-xs">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping" id="status-dot"></span>
+          <span class="text-slate-300 font-medium" id="status-text">Connecting...</span>
+        </div>
+
+        <!-- Telemetry Source Badge -->
+        <span id="source-badge" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30">
+          Source: Simulator
+        </span>
+
+        <!-- Audio Alarm Toggle -->
+        <button id="toggle-sound-btn" title="Sound is Active (Click to Mute)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition text-xs font-semibold">
+          <span id="sound-icon">🔊</span>
+          <span id="sound-text">Sound ON</span>
+        </button>
+
+        <!-- Simulator Drawer Toggle -->
+        <button id="toggle-sim-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition">
+          <span>🧪 Simulator</span>
+        </button>
+
+        <!-- Settings Modal Toggle -->
+        <button id="open-settings-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition">
+          <span>⚙️ Thresholds</span>
+        </button>
+
+        <!-- ESP32 Code Modal Toggle -->
+        <button id="open-esp-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold transition">
+          <span>🔌 ESP32 Code</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Simulator Panel (Collapsible Drawer) -->
+  <div id="sim-drawer" class="bg-slate-900 border-b border-indigo-500/30 shadow-2xl transition-all duration-300 overflow-hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 flex-wrap gap-2">
+        <div class="flex items-center gap-2">
+          <span class="text-base font-bold text-indigo-400">🧪 Interactive Home Load Simulator</span>
+          <span class="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/30">Instant Testing Mode</span>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          <label class="flex items-center gap-2 cursor-pointer select-none text-slate-300">
+            <input type="checkbox" id="sim-auto-cycle" class="rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-0" checked>
+            <span>Live Home Load Fluctuation (Dynamic)</span>
+          </label>
+          <button id="close-sim-btn" class="text-slate-400 hover:text-white">&times; Close</button>
+        </div>
+      </div>
+
+      <!-- Quick Preset Buttons -->
+      <div class="mt-3 flex items-center gap-2 flex-wrap text-xs">
+        <span class="text-slate-400 font-medium">Quick Scenarios:</span>
+        <button class="sim-scenario-btn px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 transition" data-v="230" data-w="180" data-i="0.78" data-pf="0.99">
+          🌱 Standby/Idle (~180W)
+        </button>
+        <button class="sim-scenario-btn px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-500/30 transition" data-v="228" data-w="1200" data-i="5.26" data-pf="0.98">
+          📺 TV + Fridge (~1.2 kW)
+        </button>
+        <button class="sim-scenario-btn px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-yellow-400 border border-yellow-500/30 transition" data-v="224" data-w="2750" data-i="12.2" data-pf="0.97">
+          🍳 AC + Microwave (~2.7 kW)
+        </button>
+        <button class="sim-scenario-btn px-2.5 py-1.5 rounded bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/40 font-bold transition" data-v="218" data-w="4350" data-i="19.9" data-pf="0.96">
+          🚨 OVERLOAD SPIKE (~4.3 kW / 20A)
+        </button>
+        <button class="sim-scenario-btn px-2.5 py-1.5 rounded bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-500/40 transition" data-v="172" data-w="800" data-i="4.65" data-pf="0.98">
+          📉 Low Voltage Brownout (172V)
+        </button>
+        <button class="sim-scenario-btn px-2.5 py-1.5 rounded bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/40 transition" data-v="264" data-w="950" data-i="3.6" data-pf="0.98">
+          ⚡ High Voltage Surge (264V)
+        </button>
+      </div>
+
+      <!-- Manual Sliders -->
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-slate-800/80">
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-400">Incoming Voltage</span>
+            <span class="font-mono text-cyan-400 font-bold" id="sim-v-val">230 V</span>
+          </div>
+          <input type="range" id="sim-voltage" min="150" max="280" step="1" value="230" class="w-full accent-cyan-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+        </div>
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-400">Current Load (Amps)</span>
+            <span class="font-mono text-emerald-400 font-bold" id="sim-i-val">4.5 A</span>
+          </div>
+          <input type="range" id="sim-current" min="0" max="30" step="0.1" value="4.5" class="w-full accent-emerald-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+        </div>
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-400">Power Factor</span>
+            <span class="font-mono text-purple-400 font-bold" id="sim-pf-val">0.98</span>
+          </div>
+          <input type="range" id="sim-pf" min="0.70" max="1.00" step="0.01" value="0.98" class="w-full accent-purple-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- System Safety Status Card -->
+    <div id="safety-status-card" class="rounded-2xl p-5 bg-gradient-to-r from-slate-900 via-slate-900 to-slate-800 border border-slate-800 shadow-xl transition-all duration-300">
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <div class="flex items-center gap-4">
+          <div id="safety-indicator-icon" class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-2xl transition">
+            🛡️
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 id="safety-title" class="text-lg font-bold text-white tracking-tight">System Status: All Parameters Normal</h2>
+              <span id="safety-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                Safe Load
+              </span>
+            </div>
+            <p id="safety-description" class="text-xs text-slate-400 mt-0.5">
+              Household load is well within the safe operational threshold of <span id="summary-max-w">3500W</span>.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-6 text-right">
+          <div>
+            <div class="text-xs text-slate-400">Load Capacity Usage</div>
+            <div class="text-xl font-black font-mono text-white" id="load-percentage">30.2%</div>
+          </div>
+          <div class="w-28 bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700/60 p-0.5">
+            <div id="load-bar" class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500" style="width: 30%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top 4 Primary Live Telemetry Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+      <!-- Card 1: Incoming Voltage -->
+      <div class="metric-card bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-cyan-500/40 transition">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span> Incoming Voltage
+          </span>
+          <span id="voltage-status-pill" class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            Optimal
+          </span>
+        </div>
+
+        <div class="flex items-baseline gap-2">
+          <span class="text-4xl font-extrabold tracking-tight font-mono text-white" id="val-voltage">230.0</span>
+          <span class="text-slate-400 font-bold text-sm">Volts (AC)</span>
+        </div>
+
+        <!-- Voltage Visual Range Bar -->
+        <div class="mt-4">
+          <div class="flex justify-between text-[10px] text-slate-400 font-mono mb-1">
+            <span>Min: <span id="val-v-min">190V</span></span>
+            <span class="text-cyan-400 font-bold">230V Target</span>
+            <span>Max: <span id="val-v-max">255V</span></span>
+          </div>
+          <div class="w-full h-2 bg-slate-800 rounded-full relative overflow-hidden">
+            <div id="voltage-bar" class="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-300" style="width: 76%;"></div>
+          </div>
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+          <span>Grid Frequency</span>
+          <span class="font-mono font-semibold text-slate-200" id="val-frequency">50.0 Hz</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Current In Usage -->
+      <div class="metric-card bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-emerald-500/40 transition">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Current In Usage
+          </span>
+          <span id="current-status-pill" class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            Safe
+          </span>
+        </div>
+
+        <div class="flex items-baseline gap-2">
+          <span class="text-4xl font-extrabold tracking-tight font-mono text-white" id="val-current">4.50</span>
+          <span class="text-slate-400 font-bold text-sm">Amperes</span>
+        </div>
+
+        <!-- Current Bar -->
+        <div class="mt-4">
+          <div class="flex justify-between text-[10px] text-slate-400 font-mono mb-1">
+            <span>0 A</span>
+            <span class="text-slate-300">Breaker Limit: <span id="val-i-max">16.0</span>A</span>
+          </div>
+          <div class="w-full h-2 bg-slate-800 rounded-full relative overflow-hidden">
+            <div id="current-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300" style="width: 28%;"></div>
+          </div>
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+          <span>Power Factor (PF)</span>
+          <span class="font-mono font-semibold text-slate-200" id="val-pf">0.98</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Active Power Usage -->
+      <div class="metric-card bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-yellow-500/40 transition" id="card-power">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-yellow-400"></span> Active Power Load
+          </span>
+          <span id="power-status-pill" class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+            Realtime
+          </span>
+        </div>
+
+        <div class="flex items-baseline gap-2">
+          <span class="text-4xl font-extrabold tracking-tight font-mono text-white" id="val-power">1035</span>
+          <span class="text-slate-400 font-bold text-sm" id="unit-power">Watts</span>
+        </div>
+
+        <!-- Power Bar -->
+        <div class="mt-4">
+          <div class="flex justify-between text-[10px] text-slate-400 font-mono mb-1">
+            <span>0 W</span>
+            <span class="text-yellow-400 font-bold">Max: <span id="val-w-max">3500</span>W</span>
+          </div>
+          <div class="w-full h-2 bg-slate-800 rounded-full relative overflow-hidden">
+            <div id="power-bar" class="h-full bg-gradient-to-r from-yellow-500 via-amber-500 to-red-500 rounded-full transition-all duration-300" style="width: 29.5%;"></div>
+          </div>
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+          <span>Peak Load Today</span>
+          <span class="font-mono font-semibold text-slate-200" id="val-peak-power">1280 W</span>
+        </div>
+      </div>
+
+      <!-- Card 4: Energy Consumed & Estimated Cost -->
+      <div class="metric-card bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-purple-500/40 transition">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-purple-400"></span> Energy & Bill Cost
+          </span>
+          <button id="reset-energy-btn" title="Reset Energy Counter" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition">
+            Reset
+          </button>
+        </div>
+
+        <div class="flex items-baseline gap-2">
+          <span class="text-4xl font-extrabold tracking-tight font-mono text-white" id="val-energy">3.42</span>
+          <span class="text-slate-400 font-bold text-sm">kWh (Units)</span>
+        </div>
+
+        <!-- Estimated Cost -->
+        <div class="mt-4 bg-purple-500/10 border border-purple-500/20 rounded-xl p-2.5 flex items-center justify-between">
+          <span class="text-xs text-purple-300">Estimated Cost:</span>
+          <span class="text-base font-extrabold font-mono text-purple-300" id="val-cost">₹25.65</span>
+        </div>
+
+        <div class="mt-3 pt-2 flex items-center justify-between text-xs text-slate-400">
+          <span>Tariff Rate:</span>
+          <span class="font-mono font-semibold text-slate-200" id="val-tariff-rate">₹7.50 / kWh</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Charts & Realtime Telemetry Graphs -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Realtime Chart (2 Cols on desktop) -->
+      <div class="lg:col-span-2 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <div>
+            <h3 class="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+              <span>📈 Live Power & Voltage Waveform</span>
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            </h3>
+            <p class="text-xs text-slate-400">Continuous telemetry stream from sensor</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <button id="chart-view-both" class="px-2.5 py-1 rounded bg-slate-800 text-cyan-400 font-medium border border-slate-700">All</button>
+            <button id="chart-view-power" class="px-2.5 py-1 rounded bg-slate-800/50 text-slate-400 font-medium hover:text-white">Power (W)</button>
+            <button id="chart-view-voltage" class="px-2.5 py-1 rounded bg-slate-800/50 text-slate-400 font-medium hover:text-white">Voltage (V)</button>
+          </div>
+        </div>
+
+        <!-- Canvas for Chart.js -->
+        <div class="relative h-64 w-full">
+          <canvas id="liveTelemetryChart"></canvas>
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+          <span>Update Interval: ~1.0s</span>
+          <span class="flex items-center gap-3">
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-yellow-400 inline-block"></span> Power (W)</span>
+            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-cyan-400 inline-block"></span> Voltage (V)</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Household Appliance Load Estimation / Status -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-white">Estimated Running Loads</h3>
+            <span class="text-xs text-slate-400">Smart Analysis</span>
+          </div>
+
+          <div class="space-y-3" id="appliance-list">
+            <!-- Dynamic appliance activity indicators -->
+            <div class="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg">💡</span>
+                <div>
+                  <div class="text-xs font-semibold text-slate-200">Base Lighting & Electronics</div>
+                  <div class="text-[10px] text-slate-400">Routers, LED lights, Standby</div>
+                </div>
+              </div>
+              <span class="text-xs font-mono font-bold text-emerald-400">ACTIVE</span>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-between" id="appliance-fridge">
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg">🧊</span>
+                <div>
+                  <div class="text-xs font-semibold text-slate-200">Refrigerator / Cooling</div>
+                  <div class="text-[10px] text-slate-400">Compressor duty cycle (~250W)</div>
+                </div>
+              </div>
+              <span class="text-xs font-mono font-bold text-emerald-400" id="badge-fridge">ACTIVE</span>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-between" id="appliance-ac">
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg">❄️</span>
+                <div>
+                  <div class="text-xs font-semibold text-slate-200">Air Conditioner / Heavy Motor</div>
+                  <div class="text-[10px] text-slate-400">High power consumption (~1500W+)</div>
+                </div>
+              </div>
+              <span class="text-xs font-mono font-bold text-slate-500" id="badge-ac">OFF</span>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-between" id="appliance-heater">
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg">♨️</span>
+                <div>
+                  <div class="text-xs font-semibold text-slate-200">Water Heater / Induction</div>
+                  <div class="text-[10px] text-slate-400">Heavy resistive load (~2000W+)</div>
+                </div>
+              </div>
+              <span class="text-xs font-mono font-bold text-slate-500" id="badge-heater">OFF</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
+          <span>Safe Headroom Available:</span>
+          <span class="font-mono font-bold text-cyan-400" id="val-headroom">2465 W</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Alert History & Event Log -->
+    <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <h3 class="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+            <span>🚨 Overload & Voltage Event Logs</span>
+            <span id="alert-counter-badge" class="px-2 py-0.5 rounded-full text-xs bg-red-500/20 text-red-400 font-bold">0 Events</span>
+          </h3>
+          <p class="text-xs text-slate-400">Audit trail of tripped thresholds, voltage dips, and surges</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="clear-alerts-btn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition">
+            Clear Logs
+          </button>
+        </div>
+      </div>
+
+      <!-- Alerts List Table / Container -->
+      <div class="overflow-x-auto">
+        <div id="alerts-container" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+          <!-- Filled dynamically by JavaScript -->
+          <div class="text-center py-8 text-xs text-slate-500">
+            No safety incidents logged. Everything running within nominal thresholds!
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span>⚙️ Thresholds & Alert Configuration</span>
+        </h3>
+        <button id="close-settings-modal-btn" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <form id="settings-form" class="space-y-4 text-xs">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Max Power Threshold (W)</label>
+            <input type="number" id="setting-maxPower" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono" required>
+            <span class="text-[10px] text-slate-400">Trigger overload alert above this wattage</span>
+          </div>
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Max Current Threshold (A)</label>
+            <input type="number" step="0.5" id="setting-maxCurrent" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono" required>
+            <span class="text-[10px] text-slate-400">Trip threshold for main MCB breaker</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Min Safe Voltage (V)</label>
+            <input type="number" id="setting-minVoltage" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono" required>
+            <span class="text-[10px] text-slate-400">Undervoltage / brownout limit</span>
+          </div>
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Max Safe Voltage (V)</label>
+            <input type="number" id="setting-maxVoltage" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono" required>
+            <span class="text-[10px] text-slate-400">Overvoltage surge limit</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Tariff Rate (Cost per kWh)</label>
+            <input type="number" step="0.1" id="setting-tariffRate" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono" required>
+          </div>
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Currency Symbol</label>
+            <input type="text" id="setting-currency" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono" required>
+          </div>
+        </div>
+
+        <!-- Telegram Notification Section -->
+        <div class="pt-3 border-t border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-200">📱 Telegram Phone Push Alerts (Optional)</span>
+            <button type="button" id="test-telegram-btn" class="px-2.5 py-1 text-[11px] font-semibold bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 rounded hover:bg-cyan-600/50 transition">
+              Test Alert
+            </button>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Telegram Bot Token</label>
+            <input type="password" id="setting-telegramBotToken" placeholder="e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono text-xs">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Telegram Chat ID</label>
+            <input type="text" id="setting-telegramChatId" placeholder="e.g. 987654321" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono text-xs">
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-800 flex justify-end gap-3">
+          <button type="button" id="cancel-settings-btn" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold transition">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition">Save Settings</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ESP32 Hardware Integration Guide Modal -->
+  <div id="esp-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span>🔌 ESP32 Microcontroller Integration Guide</span>
+        </h3>
+        <button id="close-esp-modal-btn" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <div class="space-y-4 text-xs text-slate-300">
+        <p>
+          Once your hardware is ready, your ESP32 can send live sensor readings directly to this dashboard via HTTP POST or WebSockets!
+        </p>
+
+        <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 font-mono text-[11px] space-y-2">
+          <div class="text-cyan-400 font-bold">API Endpoint for ESP32:</div>
+          <div class="bg-slate-900 p-2 rounded text-slate-200 select-all">
+            POST http://&lt;YOUR_PC_LOCAL_IP&gt;:3000/api/telemetry
+          </div>
+          <div class="text-slate-400 text-[10px]">
+            Payload format: {"voltage": 231.5, "current": 4.82, "power": 1113.4, "energy": 14.2, "frequency": 50.0, "powerFactor": 0.98}
+          </div>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-white mb-1.5">⚡ Recommended Circuit Connections:</h4>
+          <ul class="list-disc list-inside space-y-1 text-slate-400">
+            <li><b class="text-slate-200">PZEM-004T TX</b> ➔ <b class="text-cyan-400">ESP32 GPIO 16 (RX2)</b></li>
+            <li><b class="text-slate-200">PZEM-004T RX</b> ➔ <b class="text-cyan-400">ESP32 GPIO 17 (TX2)</b></li>
+            <li><b class="text-slate-200">PZEM-004T 5V & GND</b> ➔ <b class="text-cyan-400">ESP32 5V (VIN) & GND</b></li>
+            <li><b class="text-slate-200">CT Coil</b> ➔ Clamped around the <b class="text-yellow-400">Live Wire</b> only.</li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <h4 class="font-bold text-white">Arduino C++ Sketch (Ready to Flash):</h4>
+            <button id="copy-sketch-btn" class="px-2.5 py-1 text-[11px] rounded bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-600/50">
+              Copy Code
+            </button>
+          </div>
+          <pre id="arduino-code-block" class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-[10px] text-slate-300 max-h-48 overflow-y-auto select-all"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="app.js"></script>
+</body>
+</html>
