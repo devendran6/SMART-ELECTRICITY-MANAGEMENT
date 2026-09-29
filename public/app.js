@@ -929,10 +929,77 @@ function setupEventListeners() {
     telemetryChart.update();
   });
 
+  // Theme Dropdown Toggle & Options
+  const themeBtn = document.getElementById('theme-btn');
+  const themeDropdown = document.getElementById('theme-dropdown');
+  const themeContainer = document.getElementById('theme-menu-container');
+
+  if (themeBtn && themeDropdown) {
+    themeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      themeDropdown.classList.toggle('hidden');
+    });
+
+    document.querySelectorAll('.theme-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        applyTheme(opt.dataset.theme);
+        themeDropdown.classList.add('hidden');
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (themeContainer && !themeContainer.contains(e.target)) {
+        themeDropdown.classList.add('hidden');
+      }
+    });
+  }
+
   // Enable audio context on any user click
   document.body.addEventListener('click', () => {
     initAudio();
   }, { once: true });
+}
+
+// Multi-Theme Controller
+const themeMeta = {
+  'cyber': { label: 'Cyber Dark', icon: '🌌', gridColor: 'rgba(51, 65, 85, 0.3)', tickColor: '#94a3b8' },
+  'electric-blue': { label: 'Electric Azure', icon: '⚡', gridColor: 'rgba(30, 58, 110, 0.4)', tickColor: '#93c5fd' },
+  'emerald': { label: 'Eco Emerald', icon: '🌿', gridColor: 'rgba(6, 78, 59, 0.4)', tickColor: '#a7f3d0' },
+  'solar-amber': { label: 'Industrial Amber', icon: '☀️', gridColor: 'rgba(120, 53, 15, 0.4)', tickColor: '#fde68a' },
+  'midnight-oled': { label: 'Midnight OLED', icon: '🖤', gridColor: 'rgba(39, 39, 46, 0.5)', tickColor: '#a1a1aa' },
+  'light': { label: 'Clean Studio', icon: '☀️', gridColor: 'rgba(203, 213, 225, 0.7)', tickColor: '#475569' }
+};
+
+function applyTheme(themeKey) {
+  const meta = themeMeta[themeKey] || themeMeta['cyber'];
+  
+  // Cleanly replace theme classes
+  document.body.className = document.body.className
+    .replace(/\btheme-[a-z\-]+\b/g, '')
+    .trim();
+  
+  document.body.classList.add(`theme-${themeKey}`);
+
+  // Update button label and icon
+  const themeLabel = document.getElementById('theme-label');
+  const themeIcon = document.getElementById('theme-icon');
+  if (themeLabel) themeLabel.textContent = meta.label;
+  if (themeIcon) themeIcon.textContent = meta.icon;
+
+  // Persist preference
+  localStorage.setItem('voltguard_theme', themeKey);
+
+  // Update Chart colors if initialized
+  if (telemetryChart && telemetryChart.options && telemetryChart.options.scales) {
+    if (telemetryChart.options.scales.x) {
+      telemetryChart.options.scales.x.grid.color = meta.gridColor;
+      telemetryChart.options.scales.x.ticks.color = meta.tickColor;
+    }
+    if (telemetryChart.options.scales.yPower) {
+      telemetryChart.options.scales.yPower.grid.color = meta.gridColor;
+    }
+    telemetryChart.update('none');
+  }
 }
 
 // Populate Arduino Code Block in Modal
@@ -1041,6 +1108,10 @@ window.addEventListener('DOMContentLoaded', () => {
   updateSimulatorSliders();
   requestNotificationPermission();
   setMuteState(false);
+
+  // Apply User Theme Preference
+  const savedTheme = localStorage.getItem('voltguard_theme') || 'cyber';
+  applyTheme(savedTheme);
 
   // Try to connect to Node backend
   connectWebSocket();

@@ -12,7 +12,7 @@
 
 .overload-active {
   animation: pulseGlow 1.2s infinite ease-in-out !important;
-  background: radial-gradient(circle at center, rgba(153, 27, 27, 0.3) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
+  background: radial-gradient(circle at center, rgba(153, 27, 27, 0.35) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
 }
 
 /* Custom Scrollbars */
@@ -55,4 +55,149 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .metric-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5);
+}
+
+/* ========================================================
+   THEME STYLES ENGINE
+   ======================================================== */
+
+/* 1. Theme: Cyber Dark (Default) */
+body.theme-cyber {
+  background-color: #020617;
+  color: #f8fafc;
+}
+
+/* 2. Theme: Electric Azure Blue */
+body.theme-electric-blue {
+  background: radial-gradient(circle at 50% 0%, #0d1e3a 0%, #020612 100%) !important;
+  color: #f0f9ff !important;
+}
+body.theme-electric-blue header {
+  background-color: rgba(10, 24, 48, 0.75) !important;
+  border-color: rgba(30, 64, 120, 0.7) !important;
+}
+body.theme-electric-blue .metric-card,
+body.theme-electric-blue .bg-slate-900\/90,
+body.theme-electric-blue #safety-status-card {
+  background-color: rgba(9, 21, 41, 0.92) !important;
+  border-color: rgba(30, 58, 110, 0.6) !important;
+}
+body.theme-electric-blue #sim-drawer {
+  background-color: #071328 !important;
+  border-color: rgba(37, 99, 235, 0.4) !important;
+}
+
+/* 3. Theme: Eco Emerald Clean Energy */
+body.theme-emerald {
+  background: radial-gradient(circle at 50% 0%, #062b1e 0%, #02120b 100%) !important;
+  color: #ecfdf5 !important;
+}
+body.theme-emerald header {
+  background-color: rgba(4, 30, 20, 0.75) !important;
+  border-color: rgba(6, 78, 59, 0.7) !important;
+}
+body.theme-emerald .metric-card,
+body.theme-emerald .bg-slate-900\/90,
+body.theme-emerald #safety-status-card {
+  background-color: rgba(4, 26, 18, 0.92) !important;
+  border-color: rgba(6, 78, 59, 0.6) !important;
+}
+body.theme-emerald #sim-drawer {
+  background-color: #031c13 !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+/* 4. Theme: Industrial Solar Amber */
+body.theme-solar-amber {
+  background: radial-gradient(circle at 50% 0%, #291705 0%, #0c0803 100%) !important;
+  color: #fffbeb !important;
+}
+body.theme-solar-amber header {
+  background-color: rgba(33, 19, 5, 0.75) !important;
+  border-color: rgba(120, 53, 15, 0.7) !important;
+}
+body.theme-solar-amber .metric-card,
+body.theme-solar-amber .bg-slate-900\/90,
+body.theme-solar-amber #safety-status-card {
+  background-color: rgba(28, 16, 4, 0.92) !important;
+  border-color: rgba(120, 53, 15, 0.6) !important;
+}
+body.theme-solar-amber #sim-drawer {
+  background-color: #1e1104 !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+/* 5. Theme: Midnight OLED Pure Black */
+body.theme-midnight-oled {
+  background-color: #000000 !important;
+  color: #f8fafc !important;
+}
+body.theme-midnight-oled header {
+  background-color: rgba(10, 10, 12, 0.85) !important;
+  border-color: #1c1c22 !important;
+}
+body.theme-midnight-oled .metric-card,
+body.theme-midnight-oled .bg-slate-900\/90,
+body.theme-midnight-oled #safety-status-card {
+  background-color: #08080a !important;
+  border-color: #1c1c22 !important;
+}
+body.theme-midnight-oled #sim-drawer {
+  background-color: #050507 !important;
+  border-color: #27272e !important;
+}
+
+/* 6. Theme: Clean Modern Studio (Light Mode) */
+body.theme-light {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+body.theme-light header {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-color: #e2e8f0 !important;
+}
+body.theme-light .metric-card,
+body.theme-light .bg-slate-900\/90,
+body.theme-light #safety-status-card {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.04) !important;
+}
+body.theme-light #sim-drawer {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+body.theme-light .text-white {
+  color: #0f172a !important;
+}
+body.theme-light .text-slate-400,
+body.theme-light .text-slate-300 {
+  color: #475569 !important;
+}
+body.theme-light .bg-slate-800,
+body.theme-light .bg-slate-800\/60,
+body.theme-light .bg-slate-800\/80 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+body.theme-light .bg-slate-950 {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+body.theme-light #theme-dropdown,
+body.theme-light #settings-modal > div,
+body.theme-light #esp-modal > div {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+body.theme-light .theme-option:hover {
+  background-color: #f1f5f9 !important;
+}
+body.theme-light #theme-dropdown .text-slate-200 {
+  color: #1e293b !important;
+}
+body.theme-light #theme-dropdown .border-slate-800\/80 {
+  border-color: #e2e8f0 !important;
 }
