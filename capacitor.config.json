@@ -1,0 +1,12 @@
+{
+  "appId": "com.voltguard.smartenergy",
+  "appName": "VoltGuard",
+  "webDir": "public",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

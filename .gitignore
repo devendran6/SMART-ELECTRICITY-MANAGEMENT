@@ -18,3 +18,11 @@ yarn-error.log*
 # OS generated files
 Thumbs.db
 .DS_Store
+
+# Android build outputs & Gradle cache
+.gradle/
+android/.gradle/
+android/app/build/
+android/build/
+*.apk
+*.aab

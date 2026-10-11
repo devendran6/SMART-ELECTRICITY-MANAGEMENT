@@ -295,8 +295,14 @@ let reconnectTimer = null;
 
 function connectWebSocket() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = window.location.host || 'localhost:3000';
-  const wsUrl = `${protocol}//${host}`;
+  const customHost = localStorage.getItem('voltguard_server_host') || state.settings.serverHost;
+  let targetHost = 'localhost:3000';
+  if (customHost && customHost.trim() !== '') {
+    targetHost = customHost.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+  } else if (window.location.host && !window.location.origin.startsWith('file://')) {
+    targetHost = window.location.host;
+  }
+  const wsUrl = `${protocol}//${targetHost}`;
 
   try {
     ws = new WebSocket(wsUrl);
@@ -673,6 +679,9 @@ function applySettingsToUI() {
   document.getElementById('setting-currency').value = state.settings.currency;
   document.getElementById('setting-telegramBotToken').value = state.settings.telegramBotToken || '';
   document.getElementById('setting-telegramChatId').value = state.settings.telegramChatId || '';
+  const customHost = localStorage.getItem('voltguard_server_host') || state.settings.serverHost || '';
+  const hostInput = document.getElementById('setting-serverHost');
+  if (hostInput) hostInput.value = customHost;
 }
 
 // Interactive Simulator Logic
@@ -861,8 +870,14 @@ function setupEventListeners() {
       telegramChatId: document.getElementById('setting-telegramChatId').value.trim()
     };
 
+    const serverHostVal = document.getElementById('setting-serverHost')?.value.trim() || '';
+    localStorage.setItem('voltguard_server_host', serverHostVal);
+    state.settings.serverHost = serverHostVal;
+
     try {
-      const res = await fetch('/api/settings', {
+      const customHost = serverHostVal.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      const baseUrl = customHost ? `http://${customHost}` : '';
+      const res = await fetch(`${baseUrl}/api/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)
